@@ -44,7 +44,7 @@ class ResourcesBot(commands.Cog):
             if len(files) == 0:
                 self.override_item = [resource, resources_dict[resource]]
                 if resource[-1] == 's':
-                    response = f'No crafting recipes for {resource}. I see there\'s an \"s\" at the end. Try making it singular.\nTo add to your list anyways, use `!override`'
+                    response = f'No crafting recipes for {resource}. I see there\'s an \"s\" at the end - try making it singular.\nTo add to your list anyways, use `!override`'
                 else:
                     response = f'No crafting recipes for {resource}. Too add to your list anyways, use `!override`'
                 await ctx.message.channel.send(response)
@@ -66,7 +66,7 @@ class ResourcesBot(commands.Cog):
 
             for r in num_resources:
                 if r not in self.totals:
-                    self.totals[r] = num_resources[r]
+                    self.totals[r] = num_resources
                 else:
                     self.totals[r] += num_resources[r]
             await self._confirm_message(ctx.message)
