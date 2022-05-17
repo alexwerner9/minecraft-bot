@@ -130,7 +130,7 @@ class ResourcesBot(commands.Cog):
             if stacks == 0:
                 result_str += f'{key_str}: {remainder} individual\n'
             else:
-                result_str += f'{key_str}: {stacks} stacks, {remainder} individual\n'
+                result_str += f'{key_str}: {stacks} stacks, {remainder} individual ({value} total)\n'
         await ctx.message.channel.send(f'**Resources needed:**\n```{result_str}```')
         self.calculating = False
 

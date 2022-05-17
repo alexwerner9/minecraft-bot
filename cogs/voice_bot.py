@@ -1,6 +1,12 @@
 import discord
 import asyncio
+import os
+
 from discord.ext import commands
+from dotenv import load_dotenv
+
+load_dotenv()
+SOUND_PATH = os.getenv('SOUND_PATH')
 
 class VoiceBot(commands.Cog):
     def __init__(self, bot):
@@ -9,25 +15,14 @@ class VoiceBot(commands.Cog):
 
     @commands.command(
         name='store_coords',
-        aliases=['hot_minecraft_sex'],
         pass_context=True
     )
     async def rick_roll(self, ctx):
         user = ctx.message.author
         voice_channel = user.voice.channel
-        await self._play_audio('C:\\Users\\Alex\\Desktop\\Coding\\Downloads\\rickroll.mp3', voice_channel)
+        await self._play_audio(f'{SOUND_PATH}rickroll.mp3', voice_channel)
 
 
-    @commands.command(
-        name='dream_is_pog',
-        pass_context=True
-    )
-    async def dream_is_pog(self, ctx):
-        user = ctx.message.author
-        voice_channel = user.voice.channel
-        await self._play_audio('C:\\Users\\Alex\\Desktop\\Coding\\Downloads\\dream.mp3', voice_channel)
-
-        
     @commands.command(
         name='stop_sound'
     )

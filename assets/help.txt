@@ -1,0 +1,8 @@
+WELCOME TO MINECRAFT-BOT
+
+This bot can help you:
+   - Store data you'd like to use later, such as coordinates
+   - Calculate the resources you need for your project
+
+Use "!help storage" or "!help calculate" for information
+on these bots.
