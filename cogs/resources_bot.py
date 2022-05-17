@@ -18,6 +18,7 @@ class ResourcesBot(commands.Cog):
         name='calculate'
     )
     async def calculate(self, ctx, *items):
+        """Start of calculate command"""
         self.calculating = True
         self.totals = {}
         if len(items) > 0:
@@ -31,10 +32,19 @@ class ResourcesBot(commands.Cog):
         name='c'
     )
     async def c(self, ctx, *resources):
+        """Sub-calculate command"""
         await self._main_calculate(ctx, *resources)
 
 
     async def _main_calculate(self, ctx, *resources):
+        """Main calculation. This updates the self.total dict.
+
+        Args:
+            ctx: Context object from command
+            resources: Resources passed in from command (ex: 21 anvil)
+        Returns:
+            None
+        """
         if not self.calculating:
             await ctx.message.channel.send(f'Please enable calculating with `!calculate`')
             return
@@ -56,6 +66,17 @@ class ResourcesBot(commands.Cog):
 
 
     async def _check_files(self, files, ctx, wanted_item, resources_dict):
+        """Checks whether 1 file is found for given item.
+
+        Args:
+            files: List of files found (usually through the _check_item_path function)
+            ctx: Command context (for sending messages)
+            wanted_item: Item searching for
+            resources_dict: Dictionary of items passed in through command
+
+        Returns:
+            None
+        """
         if len(files) == 0:
             self.override_item = [wanted_item, resources_dict[wanted_item]]
             if wanted_item[-1] == 's':
@@ -74,6 +95,14 @@ class ResourcesBot(commands.Cog):
 
 
     async def _confirm_message(self, message):
+        """Confirms message with thumbs up
+
+        Args:
+            message: Message object to confirm
+
+        Returns:
+            None
+        """
         emoji = '\N{THUMBS UP SIGN}'
         await message.add_reaction(emoji)
 
@@ -82,6 +111,7 @@ class ResourcesBot(commands.Cog):
         name='override'
     )
     async def override(self, ctx):
+        """Adds item to self.totals even if no crafting recipe is found."""
         item = f'minecraft:{self.override_item[0]}'
         count = int(self.override_item[1])
         if item not in self.totals:
@@ -95,6 +125,11 @@ class ResourcesBot(commands.Cog):
         name='search'
     )
     async def search_for_resource(self, ctx, item):
+        """Searches for all available crafting recipes matching the item
+        
+        Args:
+            item: Item to search for
+        """
         result = []
         pattern = f'*{item}*'
         for root, dirs, files in os.walk(RECIPES_PATH):
@@ -115,10 +150,19 @@ class ResourcesBot(commands.Cog):
         name='stop'
     )
     async def stop_calculating(self, ctx):
+        """Command to stop calculation sequence"""
         await self._stop_calculating(ctx)
 
 
     async def _stop_calculating(self, ctx):
+        """Stops calculation sequence
+        
+        Args:
+            ctx: Context passed from command
+        
+        Returns:
+            None
+        """
         result_str = ''
         for key in self.totals:
             key_str = key[10:]
@@ -136,6 +180,15 @@ class ResourcesBot(commands.Cog):
 
 
     def _check_item_path(self, item):
+        """Check if item path matches 1 item crafting recipe file
+        
+        Args:
+            item: Item to check
+        
+        Returns:
+            result: [] if no results, list of results if multiple, 
+                    list of 1 result if exact match
+        """
         result = []
         pattern = f'*{item}*'
         for root, dirs, files in os.walk(RECIPES_PATH):
@@ -150,6 +203,14 @@ class ResourcesBot(commands.Cog):
 
 
     def _parse_resources(self, resources):
+        """Parse resources from command args into dict of {'resource': 'number'}
+        
+        Args:
+            resources: Resources from command args
+        
+        Returns:
+            dict: Dict with format {'resource': 'number'}
+        """
         res = {}
         for i in range(1, len(resources)):
             if i%2 == 0:
@@ -162,6 +223,12 @@ class ResourcesBot(commands.Cog):
 
     
     def _calculate_resource(self, number, recipe_json):
+        """Calculate items necessary to craft item. Modifies self.totals
+        
+        Args:
+            number: Number of items wanted
+            recipe_json: Json object representing the recipe file
+        """
         if recipe_json['type'] == 'minecraft:crafting_shaped':
             pattern = recipe_json['pattern']
             key_map = {}
@@ -217,6 +284,14 @@ class ResourcesBot(commands.Cog):
 
 
     def _load_recipe_json(self, item):
+        """Loads recipe into JSON string
+        
+        Args:
+            item: Item name
+        
+        Returns:
+            recipe_json: JSON string representing file
+        """
         path = f'{RECIPES_PATH}{item}.json'
         file = open(path)
         recipe_json = json.load(file)
