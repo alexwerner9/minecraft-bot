@@ -2,8 +2,8 @@ import json
 import os
 import fnmatch
 import math
-from dotenv import load_dotenv
 
+from dotenv import load_dotenv
 from discord.ext import commands
 
 load_dotenv()
