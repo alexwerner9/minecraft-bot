@@ -3,11 +3,13 @@ import asyncio
 from discord.ext import commands
 
 class VoiceBot(commands.Cog):
-    def __init__(self):
+    def __init__(self, bot):
         print('Starting Voice Bot')
+        
 
     @commands.command(
         name='store_coords',
+        aliases=['hot_minecraft_sex'],
         pass_context=True
     )
     async def rick_roll(self, ctx):
@@ -48,4 +50,4 @@ class VoiceBot(commands.Cog):
         await self.vc.disconnect()
 
 def setup(bot):
-    bot.add_cog(VoiceBot())
+    bot.add_cog(VoiceBot(bot))

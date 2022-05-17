@@ -2,8 +2,12 @@ import json
 import os
 import fnmatch
 import math
+from dotenv import load_dotenv
 
 from discord.ext import commands
+
+load_dotenv()
+RECIPES_PATH = os.getenv('RECIPES_PATH')
 
 class ResourcesBot(commands.Cog):
     def __init__(self):
@@ -20,7 +24,7 @@ class ResourcesBot(commands.Cog):
             await self._main_calculate(ctx, *items)
             await self._stop_calculating(ctx)
             return
-        await ctx.message.channel.send('Ready to calculate. Enter resources like this: `!c 21 anvil`, and then press enter. When finished, use `!stop_calculating`')
+        await ctx.message.channel.send('Ready to calculate. Enter resources like this: `!c 21 anvil`, and then press enter. When finished, use `!stop`')
 
 
     @commands.command(
@@ -39,37 +43,34 @@ class ResourcesBot(commands.Cog):
             await self._confirm_message(ctx.message)
             return
         resources_dict = self._parse_resources(resources)
-        for resource in resources_dict:
-            files = self._check_item_path(resource)
-            if len(files) == 0:
-                self.override_item = [resource, resources_dict[resource]]
-                if resource[-1] == 's':
-                    response = f'No crafting recipes for {resource}. I see there\'s an \"s\" at the end - try making it singular.\nTo add to your list anyways, use `!override`'
-                else:
-                    response = f'No crafting recipes for {resource}. Too add to your list anyways, use `!override`'
-                await ctx.message.channel.send(response)
-                return
-            if len(files) > 1:
-                file_str = ''
-                for file in files:
-                    file_str += f'{file}\n'
-                await ctx.message.channel.send(f'**Multiple results for {resource}:**\n```{file_str}```')
-                return
-            num_resources, block = self._calculate_resource(resource, int(resources_dict[resource]))
-            if block:
-                remainder = int(resources_dict[resource]) % 9
-                if resource not in num_resources and remainder != 0:
-                    num_resources[f'minecraft:{resource}'] = int(resources_dict[resource]) % 9
-                else:
-                    if remainder == 0:
-                        num_resources.pop(resource)
+        for wanted_item in resources_dict:
+            files = self._check_item_path(wanted_item)
+            valid_item = await self._check_files(files, ctx, wanted_item, resources_dict)
+            if not valid_item:
+                continue
+            recipe_json = self._load_recipe_json(wanted_item)
+            wanted_item_count = int(resources_dict[wanted_item])
+            self._calculate_resource(wanted_item_count, recipe_json)
 
-            for r in num_resources:
-                if r not in self.totals:
-                    self.totals[r] = num_resources
-                else:
-                    self.totals[r] += num_resources[r]
             await self._confirm_message(ctx.message)
+
+
+    async def _check_files(self, files, ctx, wanted_item, resources_dict):
+        if len(files) == 0:
+            self.override_item = [wanted_item, resources_dict[wanted_item]]
+            if wanted_item[-1] == 's':
+                response = f'No crafting recipes for {wanted_item}. I see there\'s an \"s\" at the end - try making it singular.\nTo add to your list anyways, use `!override`'
+            else:
+                response = f'No crafting recipes for {wanted_item}. Too add to your list anyways, use `!override`'
+            await ctx.message.channel.send(response)
+            return False
+        if len(files) > 1:
+            file_str = ''
+            for file in files:
+                file_str += f'{file}\n'
+            await ctx.message.channel.send(f'**Multiple results for {wanted_item}:**\n```{file_str}```')
+            return False
+        return True
 
 
     async def _confirm_message(self, message):
@@ -96,7 +97,7 @@ class ResourcesBot(commands.Cog):
     async def search_for_resource(self, ctx, item):
         result = []
         pattern = f'*{item}*'
-        for root, dirs, files in os.walk('C:\\Users\\Alex\Desktop\\Coding\\Discord bot\\sigma-bot\\assets\\recipes\\'):
+        for root, dirs, files in os.walk(RECIPES_PATH):
             for name in files:
                 if fnmatch.fnmatch(name, pattern):
                     result.append(name[:-5])
@@ -137,7 +138,7 @@ class ResourcesBot(commands.Cog):
     def _check_item_path(self, item):
         result = []
         pattern = f'*{item}*'
-        for root, dirs, files in os.walk('C:\\Users\\Alex\Desktop\\Coding\\Discord bot\\sigma-bot\\assets\\recipes\\'):
+        for root, dirs, files in os.walk(RECIPES_PATH):
             for name in files:
                 if fnmatch.fnmatch(name, pattern):
                     result.append(name[:-5])
@@ -160,57 +161,28 @@ class ResourcesBot(commands.Cog):
         return res
 
     
-    def _calculate_resource(self, resource, number):
-        file_name = f'C:\\Users\\Alex\Desktop\\Coding\\Discord bot\\sigma-bot\\assets\\recipes\\{resource}.json'
-        file = open(file_name)
-        recipe_json = json.load(file)
+    def _calculate_resource(self, number, recipe_json):
         if recipe_json['type'] == 'minecraft:crafting_shaped':
             pattern = recipe_json['pattern']
-            items = {}
-            items_dict = {}
-            for key, value in recipe_json['key'].items():
+            key_map = {}
+            for key, needed_item in recipe_json['key'].items():
                 try:
-                    items_dict[key] = value['item']
+                    key_map[key] = needed_item['item']
                 except Exception:
-                    items_dict[key] = value['tag']
-            for short in items_dict:
-                if items_dict[short] not in items:
-                    items[items_dict[short]] = 0
+                    key_map[key] = needed_item['tag']
+            for key in key_map:
+                item_name = key_map[key]
+                if item_name not in self.totals:
+                    self.totals[item_name] = 0
                 for row in pattern:
-                    items[items_dict[short]] += row.count(short) * number
+                    self.totals[item_name] += row.count(key) * number
                 try:
                     count = recipe_json['result']['count']
                 except Exception:
                     count = 1
-                block = 'block' in recipe_json['result']['item']
-                items[items_dict[short]] /= count
-                if block:
-                    items[items_dict[short]] = math.floor(items[items_dict[short]])
-            
-            recur_items = []
-            deletion_queue = []
-            for item in items:
-                print(item)
-                item_name = item[10:]
-                files = self._check_item_path(item_name)
-                if len(files) == 1:
-                    r, recur_block = self._calculate_resource(item_name, items[item])
-                    if recur_block:
-                        items[item] = items[item] % 9
-                    else:
-                        deletion_queue.append(item)
-                    recur_items.append(r)
-            for recur_item in recur_items:
-                for item in recur_item:
-                    if item not in items:
-                        items[item] = 0
-                    items[item] += recur_item[item]
-            for d in deletion_queue:
-                items.pop(d)
-            return items, block
+                self.totals[item_name] /= count
 
         if recipe_json['type'] == 'minecraft:crafting_shapeless':
-            items = {}
             ing = ''
             it = ''
             try:
@@ -225,28 +197,30 @@ class ResourcesBot(commands.Cog):
             except Exception:
                 it = 'item'
             for item in recipe_json[ing]:
-                if item[it] not in items:
-                    items[item[it]] = 1 * number
+                length = len(recipe_json[ing])
+                n = recipe_json[ing][0][it]
+                if item[it] not in self.totals:
+                    self.totals[item[it]] = 1 * number
                 else:
-                    items[item[it]] += 1 * number
+                    self.totals[item[it]] += 1 * number
                 try:
                     count = recipe_json['result']['count']
                 except Exception:
                     count = 1
-                items[item[it]] /= count
-            block = 'block' in recipe_json[ing][0]['item']
-            if block:
-                items[item[it]] = math.floor(items[item[it]])
-            return items, block
+                self.totals[item[it]] /= count
 
         if recipe_json['type'] == 'minecraft:smelting':
-            items = {}
             try:
-                items[recipe_json['ingredient']['tag']] = 1 * number
+                self.totals[recipe_json['ingredient']['tag']] = 1 * number
             except Exception:
-                items[recipe_json['ingredient']['item']] = 1 * number
-            return items, False
+                self.totals[recipe_json['ingredient']['item']] = 1 * number
 
+
+    def _load_recipe_json(self, item):
+        path = f'{RECIPES_PATH}{item}.json'
+        file = open(path)
+        recipe_json = json.load(file)
+        return recipe_json
 
 def setup(bot):
     bot.add_cog(ResourcesBot())
